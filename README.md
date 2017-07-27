@@ -14,4 +14,4 @@ In root repository run :
 go run src/main.go
 ```
 
-### Try it on https://gomessaging.nyhu.me
+### Try it on [messaging.nyhu.me](https://gomessaging.nyhu.me)
