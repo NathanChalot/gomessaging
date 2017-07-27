@@ -15,11 +15,12 @@ type Message struct {
   Email    string `json:"email"`
   Username string `json:"username"`
   Message  string `json:"message"`
+  Destination string `json:"destination"`
 }
 
 func main() {
   // Create a simple file server
-  fs := http.FileServer(http.Dir("../public"))
+  fs := http.FileServer(http.Dir("public"))
   http.Handle("/", fs)
   // Configure websocket route
   http.HandleFunc("/ws", handleConnections)

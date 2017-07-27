@@ -7,6 +7,7 @@ new Vue({
     chatContent: '', // A running list of chat messages displayed on the screen
     email: null, // Email address used for grabbing an avatar
     username: null, // Our username
+    destination: '', // Actual user who received messages
     joined: false // True if email and username have been filled in
   },
   created: function() {
@@ -14,11 +15,13 @@ new Vue({
     this.ws = new WebSocket('ws://' + window.location.host + '/ws');
     this.ws.addEventListener('message', function(e) {
       var msg = JSON.parse(e.data);
-      self.chatContent += '<div class="chip">'
-      + '<img src="' + self.gravatarURL(msg.email) + '">' // Avatar
-      + msg.username
-      + '</div>'
-      + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+      if (msg.destination == '' || msg.destination == self.username) {
+        self.chatContent += '<div class="chip">'
+        + '<img src="' + self.gravatarURL(msg.email) + '">' // Avatar
+        + msg.username
+        + '</div>'
+        + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+      }
 
       var element = document.getElementById('chat-messages');
       element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
@@ -31,6 +34,7 @@ new Vue({
           JSON.stringify({
             email: this.email,
             username: this.username,
+            destination: this.destination,
             message: $('<p>').html(this.newMsg).text() // Strip out html
           }
         ));
