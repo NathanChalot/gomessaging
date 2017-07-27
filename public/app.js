@@ -11,32 +11,52 @@ new Vue({
     joined: false // True if email and username have been filled in
   },
   created: function() {
-    var self = this;
-    if (window.location.protocol == "https:") {
-      this.ws = new WebSocket('wss://' + window.location.host + '/ws');
-    } else {
-      this.ws = new WebSocket('ws://' + window.location.host + '/ws');
-    }
-    this.ws.addEventListener('message', function(e) {
-      var msg = JSON.parse(e.data);
-      if (msg.type == "send") {
-        self.chatContent += '<div class="chip">'
-        + '<img src="' + self.gravatarURL(msg.email) + '">' // Avatar
-        + msg.username
-        + '</div>'
-        + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
-      }
-      else if (msg.type == "error") {
-        Materialize.toast(msg.message, 2000);
-      }
-
-      var element = document.getElementById('chat-messages');
-      element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
-    });
+    this.createWS();
   },
   methods: {
+    connect: function () {
+      this.ws.send(
+        JSON.stringify({
+          type: "connect",
+          email: this.email,
+          username: this.username,
+          destination: this.destination,
+          message: ""
+        }
+      ));
+    },
+    createWS: function () {
+      if (window.location.protocol == "https:") {
+        this.ws = new WebSocket('wss://' + window.location.host + '/ws');
+      } else {
+        this.ws = new WebSocket('ws://' + window.location.host + '/ws');
+      }
+      var self = this;
+      this.ws.addEventListener('message', function(e) {
+        var msg = JSON.parse(e.data);
+        if (msg.type == "send") {
+          self.chatContent += '<div class="chip">'
+          + '<img src="' + self.gravatarURL(msg.email) + '">' // Avatar
+          + msg.username
+          + '</div>'
+          + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+        } else if (msg.type == "error") {
+          Materialize.toast(msg.message, 2000);
+        }
+        var element = document.getElementById('chat-messages');
+        element.scrollTop = element.scrollHeight; // Auto scroll to the bottom
+      });
+    },
+    reopenWS: function () {
+      this.createWS();
+      while (this.ws.readyState == this.ws.CONNECTING);
+      this.connect();
+    },
     send: function () {
       if (this.newMsg != '') {
+        if (this.ws.readyState == this.ws.CLOSED) {
+          this.reopenWS();
+        }
         this.ws.send(
           JSON.stringify({
             type: "send",
@@ -64,15 +84,7 @@ new Vue({
       }
       this.email = $('<p>').html(this.email).text();
       this.username = $('<p>').html(this.username).text();
-      this.ws.send(
-        JSON.stringify({
-          type: "connect",
-          email: this.email,
-          username: this.username,
-          destination: this.destination,
-          message: ""
-        }
-      ));
+      this.connect();
       this.joined = true;
     },
     gravatarURL: function(email) {
