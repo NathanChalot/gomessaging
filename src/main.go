@@ -6,12 +6,13 @@ import (
   "github.com/gorilla/websocket"
 )
 
-var clients = make(map[*websocket.Conn]bool) // connected clients
+var clients = make(map[*websocket.Conn]string) // connected clients
 var broadcast = make(chan Message)           // broadcast channel
 // Configure the upgrader
 var upgrader = websocket.Upgrader{}
 // Define our message object
 type Message struct {
+  Type     string `json:"type"`
   Email    string `json:"email"`
   Username string `json:"username"`
   Message  string `json:"message"`
@@ -43,7 +44,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
   // Make sure we close the connection when the function returns
   defer ws.Close()
   // Register our new client
-  clients[ws] = true
+  clients[ws] = ""
   for {
     var msg Message
     // Read in a new message as JSON and map it to a Message object
@@ -52,6 +53,10 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
       log.Printf("error: %v", err)
       delete(clients, ws)
       break
+    }
+    if msg.Type == "connect" {
+      clients[ws] = msg.Username
+      continue
     }
     // Send the newly received message to the broadcast channel
     broadcast <- msg
@@ -63,12 +68,18 @@ func handleMessages() {
     // Grab the next message from the broadcast channel
     msg := <-broadcast
     // Send it out to every client that is currently connected
-    for client := range clients {
-      err := client.WriteJSON(msg)
-      if err != nil {
-        log.Printf("error: %v", err)
-        client.Close()
-        delete(clients, client)
+    for client, name := range clients {
+      log.Printf("client = %v", name)
+      log.Printf("destination = %v", msg.Destination)
+      if (msg.Username == name || msg.Destination == name ||
+        msg.Destination == "") {
+        log.Printf("SENDING MESSAGE to %v", name)
+        err := client.WriteJSON(msg)
+        if err != nil {
+          log.Printf("error: %v", err)
+          client.Close()
+          delete(clients, client)
+        }
       }
     }
   }

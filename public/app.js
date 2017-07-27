@@ -15,7 +15,9 @@ new Vue({
     this.ws = new WebSocket('ws://' + window.location.host + '/ws');
     this.ws.addEventListener('message', function(e) {
       var msg = JSON.parse(e.data);
-      if (msg.destination == '' || msg.destination == self.username) {
+      if (msg.destination == ''
+        || msg.destination == self.username
+        || msg.username == self.username) {
         self.chatContent += '<div class="chip">'
         + '<img src="' + self.gravatarURL(msg.email) + '">' // Avatar
         + msg.username
@@ -32,6 +34,7 @@ new Vue({
       if (this.newMsg != '') {
         this.ws.send(
           JSON.stringify({
+            type: "send",
             email: this.email,
             username: this.username,
             destination: this.destination,
@@ -39,6 +42,10 @@ new Vue({
           }
         ));
         this.newMsg = ''; // Reset newMsg
+      }
+      else {
+        Materialize.toast('You message is empty', 2000);
+        return
       }
     },
     join: function () {
@@ -52,6 +59,15 @@ new Vue({
       }
       this.email = $('<p>').html(this.email).text();
       this.username = $('<p>').html(this.username).text();
+      this.ws.send(
+        JSON.stringify({
+          type: "connect",
+          email: this.email,
+          username: this.username,
+          destination: this.destination,
+          message: ""
+        }
+      ));
       this.joined = true;
     },
     gravatarURL: function(email) {
