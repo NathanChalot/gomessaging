@@ -72,7 +72,7 @@ new Vue({
       this.joined = true;
     },
     gravatarURL: function(email) {
-      return 'http://www.gravatar.com/avatar/' + CryptoJS.MD5(email);
+      return 'https://www.gravatar.com/avatar/' + CryptoJS.MD5(email);
     }
   }
 });
