@@ -63,6 +63,17 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
   }
 }
 
+func sendMessage(client *websocket.Conn, msg Message) bool {
+  err := client.WriteJSON(msg)
+  if err != nil {
+    log.Printf("error: %v", err)
+    client.Close()
+    delete(clients, client)
+    return false
+  }
+  return true
+}
+
 func handleMessages() {
   for {
     // Grab the next message from the broadcast channel
@@ -70,28 +81,15 @@ func handleMessages() {
     // Send it out to every client that is currently connected
     var origin *websocket.Conn = nil
     send := false
-    if msg.Destination == "" {
+    if msg.Destination == "" || msg.Username == msg.Destination {
       send = true
     }
     for client, name := range clients {
-      log.Printf("client name = %T", client)
-      log.Printf("destination = %v", msg.Destination)
-      if (msg.Username == name || msg.Destination == name ||
-        msg.Destination == "") {
-        log.Printf("SENDING MESSAGE to %v", name)
-        if msg.Username == name {
-          origin = client
-          if (msg.Username == msg.Destination) {
-            send = true
-          }
-          continue
-        }
-        err := client.WriteJSON(msg)
-        if err != nil {
-          log.Printf("error: %v", err)
-          client.Close()
-          delete(clients, client)
-        } else if (msg.Destination == name) {
+      if msg.Username == name {
+        origin = client
+      } else if (msg.Destination == name || msg.Destination == "") {
+        if (sendMessage(client, msg) && msg.Destination == name) {
+          log.Printf("Message succesfully send to %v", name)
           send = true
         }
       }
@@ -101,12 +99,9 @@ func handleMessages() {
         msg.Type = "error"
         msg.Message = "User does not exist : " + msg.Destination
       }
-      err := origin.WriteJSON(msg)
-      if err != nil {
-        log.Printf("error: %v", err)
-        origin.Close()
-        delete(clients, origin)
-      }
+      sendMessage(origin, msg)
+    } else {
+      log.Printf("Origin websocket lost in translation : %v", msg.Username)
     }
   }
 }
