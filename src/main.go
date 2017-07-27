@@ -68,18 +68,44 @@ func handleMessages() {
     // Grab the next message from the broadcast channel
     msg := <-broadcast
     // Send it out to every client that is currently connected
+    var origin *websocket.Conn = nil
+    send := false
+    if msg.Destination == "" {
+      send = true
+    }
     for client, name := range clients {
-      log.Printf("client = %v", name)
+      log.Printf("client name = %T", client)
       log.Printf("destination = %v", msg.Destination)
       if (msg.Username == name || msg.Destination == name ||
         msg.Destination == "") {
         log.Printf("SENDING MESSAGE to %v", name)
+        if msg.Username == name {
+          origin = client
+          if (msg.Username == msg.Destination) {
+            send = true
+          }
+          continue
+        }
         err := client.WriteJSON(msg)
         if err != nil {
           log.Printf("error: %v", err)
           client.Close()
           delete(clients, client)
+        } else if (msg.Destination == name) {
+          send = true
         }
+      }
+    }
+    if origin != nil {
+      if send == false {
+        msg.Type = "error"
+        msg.Message = "User does not exist : " + msg.Destination
+      }
+      err := origin.WriteJSON(msg)
+      if err != nil {
+        log.Printf("error: %v", err)
+        origin.Close()
+        delete(clients, origin)
       }
     }
   }

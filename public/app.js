@@ -15,14 +15,15 @@ new Vue({
     this.ws = new WebSocket('ws://' + window.location.host + '/ws');
     this.ws.addEventListener('message', function(e) {
       var msg = JSON.parse(e.data);
-      if (msg.destination == ''
-        || msg.destination == self.username
-        || msg.username == self.username) {
+      if (msg.type == "send") {
         self.chatContent += '<div class="chip">'
         + '<img src="' + self.gravatarURL(msg.email) + '">' // Avatar
         + msg.username
         + '</div>'
         + emojione.toImage(msg.message) + '<br/>'; // Parse emojis
+      }
+      else if (msg.type == "error") {
+        Materialize.toast(msg.message, 2000);
       }
 
       var element = document.getElementById('chat-messages');
